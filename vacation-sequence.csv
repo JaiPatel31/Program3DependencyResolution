@@ -1,0 +1,8 @@
+"Event","Time","Dependencies"
+"Buy-tickets",1,"Research-airfare"
+"Choose-vacation",1,"None"
+"Drive-to-airport",2,"Buy-tickets, Hold-mail"
+"Hold-mail",1,"Set-vacation-dates"
+"Request-time-off",1,"Set-vacation-dates"
+"Research-airfare",2,"Set-vacation-dates"
+"Set-vacation-dates",1,"Choose-vacation"
