@@ -1,4 +1,3 @@
-"Event","Time","Dependencies"
 "Buy-tickets",1,"Research-airfare"
 "Choose-vacation",1,"None"
 "Drive-to-airport",2,"Buy-tickets, Hold-mail"

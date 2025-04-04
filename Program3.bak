@@ -1,0 +1,57 @@
+#lang racket 
+
+;; Either monad implementation
+(struct success (value) #:transparent)
+(struct failure (error) #:transparent)
+
+;; Task definition
+(struct task (name duration dependencies) #:transparent) 
+
+(define (parse-task-line line)
+  (match (string-split line "\"")
+    [(list _ name _ duration _ deps _)
+     (task name
+           (string->number (string-trim duration))
+           (parse-dependencies (string-trim deps)))]))
+
+(define (parse-dependencies deps-string)
+  (cond
+    [(string=? "None" deps-string) '()]
+    [else (string-split deps-string ",")]))
+
+(define (build-graph lines)
+  (for/fold ([graph (hash)])
+            ([line (in-list lines)]
+             #:when (non-empty-string? line))
+    (let ([t (parse-task-line line)])
+      (hash-set graph (task-name t) t))))             
+
+(define (topological-sort graph)
+  (let loop ([visited (hash)]
+             [result '()]
+             [tasks (hash-keys graph)])
+    (cond
+      [(empty? tasks) (success (reverse result))]
+      [else
+       (let ([ready (find-ready-tasks graph visited tasks)])
+         (if (empty? ready)
+             (failure "Circular dependency detected")
+             (let ([new-visited (mark-visited visited ready)])
+               (loop new-visited
+                     (append ready result)
+                     (remove* ready tasks)))))])))
+
+(define (find-ready-tasks graph visited tasks)
+  (filter (λ (task-name)
+            (every? (λ (dep) (hash-has-key? visited dep))
+                    (task-dependencies (hash-ref graph task-name))))
+          tasks))
+
+(define (mark-visited visited tasks)
+  (for/fold ([v visited])
+            ([t (in-list tasks)])
+    (hash-set v t #t)))
+
+(define (resolve-dependencies csv-lines)
+  (let ([graph (build-graph csv-lines)])
+    (topological-sort graph))
