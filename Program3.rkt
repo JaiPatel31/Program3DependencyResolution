@@ -94,15 +94,15 @@
   (findf (lambda (t) (equal? (task-name t) name)) tasks))
 
 ;; Topological sort
+;; Revised topological sort that naturally produces the expected order
 (define (topological-sort tasks)
   (define (visit task-name visited result graph)
     (if (member task-name visited)
         (values visited result)
         (let ([deps (task-dependencies (find-task-by-name task-name graph))])
+          ;; Process dependencies in reverse order to get DFS-like behavior
           (let-values ([(new-visited new-result)
-                       (let loop ([remaining deps] 
-                                  [v visited] 
-                                  [r result])
+                       (let loop ([remaining (reverse deps)] [v visited] [r result])
                          (if (null? remaining)
                              (values v r)
                              (let-values ([(v1 r1) (visit (car remaining) v r graph)])
@@ -110,7 +110,8 @@
             (values (cons task-name new-visited)
                     (cons (find-task-by-name task-name graph) new-result))))))
   
-  (let loop ([remaining tasks] [visited '()] [result '()])
+  ;; Process tasks in reverse input order to match example behavior
+  (let loop ([remaining (reverse tasks)] [visited '()] [result '()])
     (if (null? remaining)
         (reverse result)
         (let ([task-name (task-name (car remaining))])
@@ -133,15 +134,17 @@
 
 ;; Main function
 (define (dependency-resolver filename)
-  (let* ([csv-data (parse-csv-file filename)]
-         [tasks (build-task-graph csv-data)])
-    (either-bind (validate-tasks tasks)
-                (lambda (valid-tasks)
-                  (either-bind (check-circular-dependencies valid-tasks)
-                              (lambda (checked-tasks)
-                                (let ([schedule (schedule-tasks checked-tasks)])
-                                  (let ([total-time (apply max (map (lambda (x) (+ (car x) (caddr x))) schedule))])
-                                    (right (list schedule total-time))))))))))
+  (if (file-exists? filename)
+      (let* ([csv-data (parse-csv-file filename)]
+             [tasks (build-task-graph csv-data)])
+        (either-bind (validate-tasks tasks)
+                    (lambda (valid-tasks)
+                      (either-bind (check-circular-dependencies valid-tasks)
+                                  (lambda (checked-tasks)
+                                    (let ([schedule (schedule-tasks checked-tasks)])
+                                      (let ([total-time (apply max (map (lambda (x) (+ (car x) (caddr x))) schedule))])
+                                        (right (list schedule total-time)))))))))
+      (left (format "File not found: ~a" filename))))
 
 ;; Format output
 (define (format-output result)
